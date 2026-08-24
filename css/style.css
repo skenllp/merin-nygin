@@ -1250,6 +1250,17 @@ body.finale-glow-on .finale-glow{opacity:1}
 }
 body.finale-particles .finale-fallback{opacity:0}
 
+.thankyou-rings-slot{
+  position:relative;
+  width:100%;
+  height:clamp(120px,22vh,180px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  margin:4px auto;
+}
+
 .finale-sub{
   margin-top:8px;font-family:var(--f-display);font-style:italic;
   font-size:clamp(17px,4.4vw,24px);color:rgba(250,240,252,.75);
@@ -1684,3 +1695,141 @@ body.finale-particles .finale-fallback{opacity:0}
   font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
   color:var(--purple-lt);font-weight:600;position:relative;z-index:1;
 }
+
+/* ============================================================
+   15 · WEDDING RINGS FLOATING OVERLAY & INTRO SECTION
+   ============================================================ */
+.rings-intro-section {
+  background: var(--night, #160921);
+  color: #FAF4FB;
+  position: relative;
+  overflow: hidden;
+}
+
+.rings-intro-msg {
+  margin: 1.2rem auto 0;
+  color: rgba(250, 244, 251, 0.84);
+  font-family: var(--f-body, "Jost", sans-serif);
+  font-size: clamp(1rem, 1.4vw, 1.2rem);
+  font-weight: 300;
+  line-height: 1.7;
+  max-width: 32rem;
+  text-align: center;
+}
+
+.rings-intro-names {
+  margin: 0.9rem 0 0;
+  color: var(--gold-lt, #E5C885);
+  font-family: var(--f-script, "Pinyon Script", cursive);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.rings-floating-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+}
+
+.rings-floating-overlay.is-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.rings-scene {
+  position: relative;
+  width: min(840px, 100vw);
+  height: clamp(240px, 38vh, 340px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.wedding-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: clamp(150px, 28vw, 255px);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.ring-left {
+  z-index: 1;
+}
+
+.ring-right {
+  z-index: 2;
+}
+
+.ring-overlap {
+  z-index: 3;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.ring-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.5));
+}
+
+.ring-float {
+  animation: ringFloat 4s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.ring-right .ring-float {
+  animation-delay: -2s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes ringFloat {
+  0% {
+    transform: translateY(-8px) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(0px) rotate(0.2deg);
+  }
+  100% {
+    transform: translateY(9px) rotate(1.5deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .rings-scene {
+    height: 220px;
+  }
+  .wedding-ring {
+    width: clamp(130px, 34vw, 190px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-float {
+    animation: none;
+  }
+  .wedding-ring {
+    will-change: auto;
+  }
+}
+
+

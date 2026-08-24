@@ -353,6 +353,7 @@
     initReveals();
     initGalleryWall();
     activateLazySections();
+    initRingsScroll();
 
     /* Show the audio disc button now that we're on the main site */
     showAudioBtn();
@@ -730,4 +731,113 @@
     window.addEventListener('scroll', onScroll, { passive: true });
   })();
 
+  /* ---------------------------------------------------------
+     12 · Scroll-Driven Wedding Rings Animation (Journey to Thank You)
+     --------------------------------------------------------- */
+  function initRingsScroll() {
+    var ringsSection = document.getElementById('rings-scroll');
+    var thankyouSlot = document.getElementById('thankyouRingsSlot') || document.getElementById('finaleStage');
+    var overlay = document.getElementById('ringsOverlay');
+    var scene = overlay ? overlay.querySelector('.rings-scene') : null;
+    var leftRing = document.getElementById('ringLeft');
+    var rightRing = document.getElementById('ringRight');
+    var overlapRing = document.getElementById('ringLeftOverlap');
+
+    if (!ringsSection || !thankyouSlot || !overlay || !leftRing || !rightRing || !scene) return;
+
+    var ticking = false;
+
+    function clamp(val, min, max) {
+      return Math.min(Math.max(val, min), max);
+    }
+
+    function updateRings() {
+      ticking = false;
+      var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+      var vw = window.innerWidth || document.documentElement.clientWidth || 1200;
+      var docTop = window.scrollY || document.documentElement.scrollTop || 0;
+
+      var secRect = ringsSection.getBoundingClientRect();
+      var slotRect = thankyouSlot.getBoundingClientRect();
+
+      var startY = secRect.top;
+
+      // If user has not scrolled down near #rings-scroll or thankyou section has scrolled off top
+      if (startY > vh + 100 || slotRect.bottom < -120) {
+        overlay.classList.remove('is-active');
+        overlay.style.opacity = '0';
+        return;
+      }
+
+      var secPageTop = secRect.top + docTop;
+      var slotPageCenter = slotRect.top + docTop + (slotRect.height / 2);
+      var targetScrollEnd = slotPageCenter - (vh * 0.5);
+      var totalDistance = targetScrollEnd - secPageTop;
+      if (totalDistance <= 0) totalDistance = 1;
+
+      var progress = clamp((docTop - secPageTop) / totalDistance, 0, 1);
+
+      // Smooth fade-in when entering #rings-scroll
+      var enterFade = clamp((vh * 0.85 - startY) / (vh * 0.4), 0, 1);
+      overlay.classList.add('is-active');
+      overlay.style.opacity = enterFade.toFixed(3);
+
+      var isMobile = vw < 640;
+      var startX = isMobile ? Math.min(Math.max(vw * 0.38, 130), 160) : Math.min(Math.max(vw * 0.35, 220), 400);
+      var endX = isMobile ? 22 : 36;
+      var travelX = startX - endX;
+
+      var leftX = -startX + (progress * travelX);
+      var rightX = startX - (progress * travelX);
+
+      var leftY = -24 + (progress * 24);
+      var rightY = 24 - (progress * 24);
+
+      var leftRotate = -18 + (progress * 16);
+      var rightRotate = 18 - (progress * 16);
+
+      var scale = (isMobile ? 0.90 : 0.86) + (progress * 0.16);
+
+      var transformLeft = 'translate(calc(-50% + ' + leftX.toFixed(1) + 'px), calc(-50% + ' + leftY.toFixed(1) + 'px)) rotate(' + leftRotate.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
+      var transformRight = 'translate(calc(-50% + ' + rightX.toFixed(1) + 'px), calc(-50% + ' + rightY.toFixed(1) + 'px)) rotate(' + rightRotate.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
+
+      leftRing.style.transform = transformLeft;
+      rightRing.style.transform = transformRight;
+
+      if (overlapRing) {
+        overlapRing.style.transform = transformLeft;
+        overlapRing.style.opacity = progress > 0.65 ? '1' : '0';
+      }
+
+      leftRing.style.zIndex = progress > 0.65 ? '3' : '1';
+      rightRing.style.zIndex = progress > 0.65 ? '1' : '3';
+
+      // Pin vertically to slot between THANK YOU and "for being a part of our story" when reached
+      if (docTop >= targetScrollEnd) {
+        var slotCenterY = slotRect.top + (slotRect.height / 2);
+        var offsetY = slotCenterY - (vh * 0.5);
+        scene.style.transform = 'translateY(' + offsetY.toFixed(1) + 'px)';
+      } else {
+        scene.style.transform = 'translateY(0px)';
+      }
+    }
+
+    function onScroll() {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(updateRings);
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+
+    updateRings();
+  }
+
+  if (document.readyState === 'complete') initRingsScroll();
+  else window.addEventListener('load', initRingsScroll);
+
 })();
+
+
