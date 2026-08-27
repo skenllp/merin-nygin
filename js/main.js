@@ -351,7 +351,7 @@
     body.classList.add('is-revealed');
     unlockScroll();
     initReveals();
-    initGalleryWall();
+    initGallery();
     activateLazySections();
     initRingsScroll();
 
@@ -554,81 +554,202 @@
   }
 
   /* ---------------------------------------------------------
-     7b · Gallery photo wall — enter / float / parallax / touch
+     7b · Royal Gallery & Lightbox (Responsive Mobile/Desktop)
      --------------------------------------------------------- */
-  function initGalleryWall() {
-    var wall = document.getElementById('photoWall');
-    if (!wall) return;
+  function initGallery() {
+    var track = document.getElementById('galleryTrack');
+    var cards = document.querySelectorAll('.gallery-card');
+    var items = document.querySelectorAll('.gallery-item');
+    var dots = document.querySelectorAll('#galleryDots .gallery-dot');
+    var prevBtn = document.getElementById('galleryPrev');
+    var nextBtn = document.getElementById('galleryNext');
 
-    var cards = wall.querySelectorAll('.photo-card');
-    if (!cards.length) return;
+    var lightbox = document.getElementById('galleryLightbox');
+    var lightboxImg = document.getElementById('lightboxImg');
+    var lightboxCounter = document.getElementById('lightboxCounter');
+    var lightboxClose = document.getElementById('lightboxClose');
+    var lightboxBackdrop = document.getElementById('lightboxBackdrop');
+    var lightboxPrev = document.getElementById('lightboxPrev');
+    var lightboxNext = document.getElementById('lightboxNext');
 
-    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var currentLightboxIndex = 0;
+    var imageList = [];
 
-    function revealCard(card) {
-      if (card.classList.contains('is-in')) return;
-      card.classList.add('is-in');
-    }
+    Array.prototype.forEach.call(cards, function (card, idx) {
+      var img = card.querySelector('img');
+      var src = img ? (img.getAttribute('src') || img.src) : '';
+      var alt = img ? (img.getAttribute('alt') || 'Merin & Nygin') : 'Merin & Nygin';
+      imageList.push({ src: src, alt: alt });
 
-    if (reduceMotion || !('IntersectionObserver' in window)) {
-      Array.prototype.forEach.call(cards, revealCard);
-    } else {
-      var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (en) {
-          if (!en.isIntersecting) return;
-          revealCard(en.target);
-          io.unobserve(en.target);
-        });
-      }, { threshold: 0.14, rootMargin: '0px 0px -6% 0px' });
-      Array.prototype.forEach.call(cards, function (card) { io.observe(card); });
-    }
+      // Open lightbox on click or Enter / Space key
+      var openHandler = function (e) {
+        if (e) e.preventDefault();
+        openLightbox(idx);
+      };
+      card.addEventListener('click', openHandler);
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openLightbox(idx);
+        }
+      });
+    });
 
-    /* Touch bounce */
-    Array.prototype.forEach.call(document.querySelectorAll('.photo-card, .venue-dest-item'), function (card) {
-      var clearTouch = function () { card.classList.remove('is-touched'); };
-      card.addEventListener('pointerdown', function (e) {
+    /* Touch bounce effect for interactive cards */
+    Array.prototype.forEach.call(document.querySelectorAll('.venue-dest-item, .gallery-card'), function (el) {
+      el.addEventListener('pointerdown', function (e) {
         if (e.pointerType === 'mouse') return;
-        card.classList.add('is-touched');
-        window.setTimeout(clearTouch, 3000);
+        el.classList.add('is-touched');
+        window.setTimeout(function () { el.classList.remove('is-touched'); }, 1200);
       }, { passive: true });
     });
 
-    if (reduceMotion) return;
+    /* Mobile Carousel Dot Sync & Navigation */
+    if (track && dots.length) {
+      var updateDots = function () {
+        var scrollLeft = track.scrollLeft;
+        var trackWidth = track.clientWidth || 1;
+        var activeIndex = 0;
+        var minDiff = Infinity;
 
-    /* Scroll parallax */
-    var ticking = false;
-    var speeds = [];
-    Array.prototype.forEach.call(cards, function (card, i) {
-      var raw = parseFloat(card.getAttribute('data-speed'));
-      speeds[i] = isNaN(raw) ? ((i % 2 === 0) ? 0.05 : -0.04) : raw;
-    });
+        Array.prototype.forEach.call(items, function (item, idx) {
+          var itemCenter = item.offsetLeft + item.offsetWidth / 2;
+          var viewCenter = scrollLeft + trackWidth / 2;
+          var diff = Math.abs(itemCenter - viewCenter);
+          if (diff < minDiff) {
+            minDiff = diff;
+            activeIndex = idx;
+          }
+        });
 
-    function updateParallax() {
-      ticking = false;
-      var vh = window.innerHeight || 1;
-      var mid = vh * 0.5;
-      for (var i = 0; i < cards.length; i++) {
-        var card = cards[i];
-        if (!card.classList.contains('is-in')) continue;
-        var rect = card.getBoundingClientRect();
-        if (rect.bottom < -80 || rect.top > vh + 80) continue;
-        var offset = (rect.top + rect.height * 0.5 - mid) * speeds[i];
-        if (offset > 18) offset = 18;
-        if (offset < -18) offset = -18;
-        card.style.setProperty('--parallax-y', offset.toFixed(2) + 'px');
+        Array.prototype.forEach.call(dots, function (dot, idx) {
+          var isActive = idx === activeIndex;
+          dot.classList.toggle('is-active', isActive);
+          dot.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+      };
+
+      var scrollTimer;
+      track.addEventListener('scroll', function () {
+        if (scrollTimer) cancelAnimationFrame(scrollTimer);
+        scrollTimer = requestAnimationFrame(updateDots);
+      }, { passive: true });
+
+      Array.prototype.forEach.call(dots, function (dot, idx) {
+        dot.addEventListener('click', function () {
+          if (items[idx]) {
+            items[idx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        });
+      });
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+          var current = 0;
+          Array.prototype.forEach.call(dots, function (d, i) {
+            if (d.classList.contains('is-active')) current = i;
+          });
+          var prevIdx = Math.max(0, current - 1);
+          if (items[prevIdx]) {
+            items[prevIdx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+          var current = 0;
+          Array.prototype.forEach.call(dots, function (d, i) {
+            if (d.classList.contains('is-active')) current = i;
+          });
+          var nextIdx = Math.min(items.length - 1, current + 1);
+          if (items[nextIdx]) {
+            items[nextIdx].scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        });
       }
     }
 
-    function onScroll() {
-      if (ticking) return;
-      ticking = true;
-      window.requestAnimationFrame(updateParallax);
+    /* Lightbox Functions */
+    function openLightbox(index) {
+      if (!lightbox || !imageList.length) return;
+      currentLightboxIndex = (index + imageList.length) % imageList.length;
+      updateLightboxImage();
+      lightbox.classList.add('is-open');
+      lightbox.removeAttribute('aria-hidden');
+      document.body.classList.add('lightbox-open');
+      if (lightboxClose) lightboxClose.focus();
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    onScroll();
+    function closeLightbox() {
+      if (!lightbox) return;
+      lightbox.classList.remove('is-open');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('lightbox-open');
+    }
+
+    function updateLightboxImage() {
+      var item = imageList[currentLightboxIndex];
+      if (!item || !lightboxImg) return;
+      lightboxImg.style.opacity = '0';
+      lightboxImg.style.transform = 'scale(0.96)';
+      setTimeout(function () {
+        lightboxImg.src = item.src;
+        lightboxImg.alt = item.alt;
+        lightboxImg.style.opacity = '1';
+        lightboxImg.style.transform = 'scale(1)';
+      }, 120);
+      if (lightboxCounter) {
+        lightboxCounter.textContent = (currentLightboxIndex + 1) + ' / ' + imageList.length;
+      }
+    }
+
+    function prevLightboxImage() {
+      if (!imageList.length) return;
+      currentLightboxIndex = (currentLightboxIndex - 1 + imageList.length) % imageList.length;
+      updateLightboxImage();
+    }
+
+    function nextLightboxImage() {
+      if (!imageList.length) return;
+      currentLightboxIndex = (currentLightboxIndex + 1) % imageList.length;
+      updateLightboxImage();
+    }
+
+    if (lightbox) {
+      if (lightboxClose) lightboxClose.addEventListener('click', closeLightbox);
+      if (lightboxBackdrop) lightboxBackdrop.addEventListener('click', closeLightbox);
+      if (lightboxPrev) lightboxPrev.addEventListener('click', prevLightboxImage);
+      if (lightboxNext) lightboxNext.addEventListener('click', nextLightboxImage);
+
+      window.addEventListener('keydown', function (e) {
+        if (!lightbox.classList.contains('is-open')) return;
+        if (e.key === 'Escape') closeLightbox();
+        else if (e.key === 'ArrowLeft') prevLightboxImage();
+        else if (e.key === 'ArrowRight') nextLightboxImage();
+      });
+
+      // Touch swipe in lightbox
+      var touchStartX = 0;
+      var touchEndX = 0;
+      lightbox.addEventListener('touchstart', function (e) {
+        if (e.changedTouches && e.changedTouches.length) {
+          touchStartX = e.changedTouches[0].screenX;
+        }
+      }, { passive: true });
+      lightbox.addEventListener('touchend', function (e) {
+        if (e.changedTouches && e.changedTouches.length) {
+          touchEndX = e.changedTouches[0].screenX;
+          var diff = touchEndX - touchStartX;
+          if (diff > 45) prevLightboxImage();
+          else if (diff < -45) nextLightboxImage();
+        }
+      }, { passive: true });
+    }
   }
+
+  if (document.readyState === 'complete') initGallery();
+  else window.addEventListener('load', initGallery);
 
   /* ---------------------------------------------------------
      8 · Countdown — 29 Aug 2026, 11:00 IST
@@ -732,10 +853,10 @@
   })();
 
   /* ---------------------------------------------------------
-     12 · Scroll-Driven Wedding Rings Animation (Journey to Thank You)
+     12 · Scroll-Driven Wedding Rings Animation (Hero to Thank You Journey)
      --------------------------------------------------------- */
   function initRingsScroll() {
-    var ringsSection = document.getElementById('rings-scroll');
+    var heroSection = document.getElementById('hero') || document.getElementById('site');
     var thankyouSlot = document.getElementById('thankyouRingsSlot') || document.getElementById('finaleStage');
     var overlay = document.getElementById('ringsOverlay');
     var scene = overlay ? overlay.querySelector('.rings-scene') : null;
@@ -743,7 +864,7 @@
     var rightRing = document.getElementById('ringRight');
     var overlapRing = document.getElementById('ringLeftOverlap');
 
-    if (!ringsSection || !thankyouSlot || !overlay || !leftRing || !rightRing || !scene) return;
+    if (!thankyouSlot || !overlay || !leftRing || !rightRing || !scene) return;
 
     var ticking = false;
 
@@ -757,33 +878,41 @@
       var vw = window.innerWidth || document.documentElement.clientWidth || 1200;
       var docTop = window.scrollY || document.documentElement.scrollTop || 0;
 
-      var secRect = ringsSection.getBoundingClientRect();
-      var slotRect = thankyouSlot.getBoundingClientRect();
-
-      var startY = secRect.top;
-
-      // If user has not scrolled down near #rings-scroll or thankyou section has scrolled off top
-      if (startY > vh + 100 || slotRect.bottom < -120) {
+      // Only display once invitation cover/reveal is opened
+      if (!document.body.classList.contains('is-revealed')) {
         overlay.classList.remove('is-active');
         overlay.style.opacity = '0';
         return;
       }
 
-      var secPageTop = secRect.top + docTop;
+      var slotRect = thankyouSlot.getBoundingClientRect();
+
+      // If user has scrolled way past thankyou section off top
+      if (slotRect.bottom < -150) {
+        overlay.classList.remove('is-active');
+        overlay.style.opacity = '0';
+        return;
+      }
+
+      var heroRect = heroSection ? heroSection.getBoundingClientRect() : { top: -docTop };
+      var heroPageTop = heroRect.top + docTop;
       var slotPageCenter = slotRect.top + docTop + (slotRect.height / 2);
       var targetScrollEnd = slotPageCenter - (vh * 0.5);
-      var totalDistance = targetScrollEnd - secPageTop;
+      var totalDistance = targetScrollEnd - heroPageTop;
       if (totalDistance <= 0) totalDistance = 1;
 
-      var progress = clamp((docTop - secPageTop) / totalDistance, 0, 1);
+      var progress = clamp((docTop - heroPageTop) / totalDistance, 0, 1);
 
-      // Smooth fade-in when entering #rings-scroll
-      var enterFade = clamp((vh * 0.85 - startY) / (vh * 0.4), 0, 1);
       overlay.classList.add('is-active');
-      overlay.style.opacity = enterFade.toFixed(3);
+      overlay.style.opacity = '1';
 
       var isMobile = vw < 640;
-      var startX = isMobile ? Math.min(Math.max(vw * 0.38, 130), 160) : Math.min(Math.max(vw * 0.35, 220), 400);
+      // Start position (Hero): separated on left and right flanks
+      var startX = isMobile
+        ? Math.min(Math.max(vw * 0.38, 125), 160)
+        : Math.min(Math.max(vw * 0.38, 250), 500);
+
+      // Final position (Thank You): interlocked union distance
       var endX = isMobile ? 22 : 36;
       var travelX = startX - endX;
 
@@ -796,7 +925,7 @@
       var leftRotate = -18 + (progress * 16);
       var rightRotate = 18 - (progress * 16);
 
-      var scale = (isMobile ? 0.90 : 0.86) + (progress * 0.16);
+      var scale = (isMobile ? 0.86 : 0.84) + (progress * 0.16);
 
       var transformLeft = 'translate(calc(-50% + ' + leftX.toFixed(1) + 'px), calc(-50% + ' + leftY.toFixed(1) + 'px)) rotate(' + leftRotate.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
       var transformRight = 'translate(calc(-50% + ' + rightX.toFixed(1) + 'px), calc(-50% + ' + rightY.toFixed(1) + 'px)) rotate(' + rightRotate.toFixed(1) + 'deg) scale(' + scale.toFixed(3) + ')';
@@ -806,7 +935,8 @@
 
       if (overlapRing) {
         overlapRing.style.transform = transformLeft;
-        overlapRing.style.opacity = progress > 0.65 ? '1' : '0';
+        var overlapOpacity = progress > 0.65 ? clamp((progress - 0.65) / 0.15, 0, 1) : 0;
+        overlapRing.style.opacity = overlapOpacity.toFixed(3);
       }
 
       leftRing.style.zIndex = progress > 0.65 ? '3' : '1';
